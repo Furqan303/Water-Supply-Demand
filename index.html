@@ -14,7 +14,7 @@
             padding: 0;
             height: 100%;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #212121; /* Pure dark background */
+            background-color: #212121; 
         }
 
         #map {
@@ -171,7 +171,6 @@
         L.control.zoom({ position: 'bottomleft' }).addTo(map);
 
         // 2. Define Basemaps for the Layer Switcher
-       // Standard OpenStreetMap (The classic "Leaflet" default)
         var osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         });
@@ -181,7 +180,7 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
         });
 
-        var noBasemap = L.layerGroup(); // An empty layer for a pure dark background
+        var noBasemap = L.layerGroup(); 
 
         // Add standard OSM as the default loaded background
         osmStandard.addTo(map);
@@ -196,7 +195,7 @@
 
         // 3. Prepare variables
         const tifFileName = "Pakistan_Water_Stress_Bivariate_Map.tif";
-        var geoTiffLayer; // Define variable globally so slider can talk to it
+        var geoTiffLayer; 
 
         // 4. Load the GeoTIFF automatically
         fetch(tifFileName)
@@ -208,11 +207,11 @@
             .then(georaster => {
                 geoTiffLayer = new GeoRasterLayer({
                     georaster: georaster,
-                    opacity: 0.85, // Default opacity matches slider
+                    opacity: 0.85, 
                     resolution: 256,
                     zIndex: 1000,
                     pixelValuesToColorFn: function(values) {
-                        // Drop pure black border pixels
+                      
                         if (values[0] === 0 && values[1] === 0 && values[2] === 0) return null;
                         return `rgb(${values[0]}, ${values[1]}, ${values[2]})`;
                     }
@@ -230,9 +229,9 @@
 
         opacitySlider.addEventListener('input', function(e) {
             var val = e.target.value;
-            opacityVal.innerText = val + '%'; // Update text
+            opacityVal.innerText = val + '%'; 
             
-            var opacityFloat = val / 100; // Convert 0-100 to 0.0-1.0 format
+            var opacityFloat = val / 100;
             
             // Apply opacity if the map layer has finished loading
             if (geoTiffLayer) {
