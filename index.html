@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakistan Water Risk: Demand vs Supply</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #212121; /* Pure dark background */
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Opacity Control Panel */
+        .opacity-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(33, 33, 33, 0.9);
+            color: #e0e0e0;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .opacity-panel label {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .opacity-panel input[type="range"] {
+            cursor: pointer;
+            width: 150px;
+        }
+
+        /* Custom Bivariate Legend */
+        .legend-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            background: rgba(33, 33, 33, 0.9);
+            color: #e0e0e0;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        .legend-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 1px solid #555;
+            padding-bottom: 8px;
+        }
+
+        .legend-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .y-axis {
+            transform: rotate(-90deg);
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-right: -15px;
+            text-transform: uppercase;
+        }
+
+        .x-axis {
+            text-align: center;
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-top: 10px;
+            margin-left: 20px;
+            text-transform: uppercase;
+        }
+
+        .grid-4x4 {
+            display: grid;
+            grid-template-columns: repeat(4, 30px);
+            grid-template-rows: repeat(4, 30px);
+            gap: 2px;
+            background: #111;
+            padding: 2px;
+        }
+
+        .grid-item {
+            width: 30px;
+            height: 30px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Opacity Slider UI -->
+    <div class="opacity-panel">
+        <label for="opacity-slider">Map Opacity: <span id="opacity-val">85%</span></label>
+        <input type="range" id="opacity-slider" min="0" max="100" value="85">
+    </div>
+
+    <!-- The Map -->
+    <div id="map"></div>
+
+    <!-- Bivariate Legend -->
+    <div class="legend-container">
+        <div class="legend-title">Water Risk</div>
+        <div class="legend-wrapper">
+            <div class="y-axis">Demand ➔</div>
+            
+            <div class="grid-4x4">
+                <!-- Row 4 (Highest Demand) -->
+                <div class="grid-item" style="background: #990000;" title="High Demand, Low Supply"></div>
+                <div class="grid-item" style="background: #740000;"></div>
+                <div class="grid-item" style="background: #470000;"></div>
+                <div class="grid-item" style="background: #190000;" title="High Demand, High Supply"></div>
+                
+                <!-- Row 3 -->
+                <div class="grid-item" style="background: #c85a5a;"></div>
+                <div class="grid-item" style="background: #b0d5df;"></div>
+                <div class="grid-item" style="background: #985356;"></div>
+                <div class="grid-item" style="background: #125e77;"></div>
+                
+                <!-- Row 2 -->
+                <div class="grid-item" style="background: #e4acac;"></div>
+                <div class="grid-item" style="background: #c8b35a;"></div>
+                <div class="grid-item" style="background: #8a9e71;"></div>
+                <div class="grid-item" style="background: #1d4877;"></div>
+                
+                <!-- Row 1 (Lowest Demand) -->
+                <div class="grid-item" style="background: #e8e8e8;" title="Low Demand, Low Supply"></div>
+                <div class="grid-item" style="background: #b8d6be;"></div>
+                <div class="grid-item" style="background: #73b3d8;"></div>
+                <div class="grid-item" style="background: #225ea8;" title="Low Demand, High Supply"></div>
+            </div>
+        </div>
+        <div class="x-axis">Supply ➔</div>
+    </div>
+
+    <!-- Scripts for Leaflet and GeoTIFF reading -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+
+    <script>
+        // 1. Initialize the Map
+        var map = L.map('map', {
+            center: [30.375, 69.345],
+            zoom: 5,
+            zoomControl: false
+        });
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+        // 2. Define Basemaps for the Layer Switcher
+       // Standard OpenStreetMap (The classic "Leaflet" default)
+        var osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        });
+
+        // OpenTopoMap (A great alternative showing terrain and elevation)
+        var osmTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
+        });
+
+        var noBasemap = L.layerGroup(); // An empty layer for a pure dark background
+
+        // Add standard OSM as the default loaded background
+        osmStandard.addTo(map);
+
+        // Add the toggle menu to the top right corner
+        var baseMaps = {
+            "Standard Street Map": osmStandard,
+            "Topographic Terrain": osmTopo,
+            "No Basemap (Dark)": noBasemap
+        };
+        L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
+        // 3. Prepare variables
+        const tifFileName = "Pakistan_Water_Stress_Bivariate_Map.tif";
+        var geoTiffLayer; // Define variable globally so slider can talk to it
+
+        // 4. Load the GeoTIFF automatically
+        fetch(tifFileName)
+            .then(response => {
+                if (!response.ok) throw new Error("Could not find " + tifFileName);
+                return response.arrayBuffer();
+            })
+            .then(arrayBuffer => parseGeoraster(arrayBuffer))
+            .then(georaster => {
+                geoTiffLayer = new GeoRasterLayer({
+                    georaster: georaster,
+                    opacity: 0.85, // Default opacity matches slider
+                    resolution: 256,
+                    zIndex: 1000,
+                    pixelValuesToColorFn: function(values) {
+                        // Drop pure black border pixels
+                        if (values[0] === 0 && values[1] === 0 && values[2] === 0) return null;
+                        return `rgb(${values[0]}, ${values[1]}, ${values[2]})`;
+                    }
+                });
+                geoTiffLayer.addTo(map);
+                map.fitBounds(geoTiffLayer.getBounds());
+            })
+            .catch(error => {
+                console.error(error);
+            });
+
+        // 5. Connect Opacity Slider to the Map Layer
+        var opacitySlider = document.getElementById('opacity-slider');
+        var opacityVal = document.getElementById('opacity-val');
+
+        opacitySlider.addEventListener('input', function(e) {
+            var val = e.target.value;
+            opacityVal.innerText = val + '%'; // Update text
+            
+            var opacityFloat = val / 100; // Convert 0-100 to 0.0-1.0 format
+            
+            // Apply opacity if the map layer has finished loading
+            if (geoTiffLayer) {
+                if (typeof geoTiffLayer.setOpacity === 'function') {
+                    geoTiffLayer.setOpacity(opacityFloat);
+                } else if (geoTiffLayer.getContainer) {
+                    geoTiffLayer.getContainer().style.opacity = opacityFloat;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
